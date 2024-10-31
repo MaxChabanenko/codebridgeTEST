@@ -1,5 +1,6 @@
 ﻿using codebridgeTEST.Data;
 using codebridgeTEST.Models;
+using codebridgeTEST.Services;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -11,11 +12,13 @@ namespace codebridgeTEST.Controllers
     [Route("[action]")]
     public class DogController : ControllerBase
     {
-        private readonly DataContext _context;
-        public DogController(DataContext context)
+        private readonly IDogService _dogService;
+
+        public DogController(IDogService dogService)
         {
-            _context = context;
+            _dogService = dogService;
         }
+
         [HttpGet]
         public IActionResult ping()
         {
@@ -30,43 +33,39 @@ namespace codebridgeTEST.Controllers
                     [FromQuery] int? pageNumber = null,
                     [FromQuery] int? pageSize = null)
         {
-            IQueryable<Dog> query = _context.Dogs;
-
-            //pagination
-            if (pageNumber.HasValue && pageSize.HasValue)
+            try
             {
-                if (pageNumber <= 0|| pageSize <= 0)
-                {
-                    return BadRequest("Page values must be positive ");
-                }
-
-                query = query.Skip((pageNumber.Value - 1) * pageSize.Value)
-                             .Take(pageSize.Value);
+                var dogs = await _dogService.GetDogsAsync(attribute, order, pageNumber, pageSize);
+                return Ok(dogs);
             }
-            //sorting
-            if (!string.IsNullOrEmpty(attribute) && !string.IsNullOrEmpty(order))
+            catch (ArgumentException ex)
             {
-                var propertyInfo = typeof(Dog).GetProperties()
-                    .FirstOrDefault(p => p.Name.Equals(attribute, StringComparison.OrdinalIgnoreCase));
-
-                if (propertyInfo == null)
-                {
-                    return BadRequest($"Attribute '{attribute}' does not exist");
-                }
-                if (order.ToLower() != "desc"&& order.ToLower() != "asc")
-                {
-                    return BadRequest($"Order only 'desc' and 'asc'");
-                }
-
-                query = order.ToLower() == "desc"
-                    ? query.OrderByDescending(d => EF.Property<object>(d, propertyInfo.Name)) 
-                    : query.OrderBy(d => EF.Property<object>(d, propertyInfo.Name));
+                return BadRequest(ex.Message);
             }
-        
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error {ex}");
+            }
 
-            var dogs = await query.ToListAsync();
-
-            return Ok(dogs);
         }
+        //curl -X POST http://localhost/dog -H "Content-Type: application/json" -d "{\"name\": \"Doggy\", \"color\": \"red\", \"tail_length\": 173, \"weight\": 33}"
+        [HttpPost]
+        public async Task<IActionResult> dog(Dog dog)
+        {
+            try
+            {
+                var addedDog = await _dogService.AddDogAsync(dog);
+                return Ok("Dog added");
+            }
+            catch (ArgumentException ex)
+            {
+                return BadRequest(ex.Message);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Internal server error {ex}");
+            }
+        }
+
     }
 }

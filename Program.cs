@@ -1,4 +1,6 @@
 using codebridgeTEST.Data;
+using codebridgeTEST.Middleware;
+using codebridgeTEST.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -15,6 +17,8 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<DataContext>(options =>
 options.UseSqlServer(connectionString));
 
+builder.Services.AddScoped<IDogService, DogService>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -29,6 +33,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseAuthorization();
+app.UseMiddleware<RateLimitingMiddleware>(10);
 
 app.MapControllers();
 
