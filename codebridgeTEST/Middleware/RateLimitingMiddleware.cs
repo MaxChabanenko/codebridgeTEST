@@ -20,7 +20,7 @@
 
         public async Task Invoke(HttpContext context)
         {
-            var clientId = context.Connection.RemoteIpAddress.ToString();
+            var clientId = context.Connection.RemoteIpAddress?.ToString() ?? "localhost";
 
             var rateLimitInfo = _clients.GetOrAdd(clientId, _ => new RateLimitInfo(_timeSpan));
 
