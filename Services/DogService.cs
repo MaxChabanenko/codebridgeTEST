@@ -17,8 +17,18 @@ namespace codebridgeTEST.Services
         {
             IQueryable<Dog> query = _context.Dogs;
 
-            
-            //sorting first
+            //pagination
+            if (pageNumber.HasValue && pageSize.HasValue)
+            {
+                if (pageNumber <= 0 || pageSize <= 0)
+                {
+                    throw new ArgumentException("Page values must be positive ");
+                }
+
+                query = query.Skip((pageNumber.Value - 1) * pageSize.Value)
+                             .Take(pageSize.Value);
+            }
+            //sorting
             if (!string.IsNullOrEmpty(attribute) && !string.IsNullOrEmpty(order))
             {
                 var propertyInfo = typeof(Dog).GetProperties()
@@ -37,17 +47,7 @@ namespace codebridgeTEST.Services
                     ? query.OrderByDescending(d => EF.Property<object>(d, propertyInfo.Name))
                     : query.OrderBy(d => EF.Property<object>(d, propertyInfo.Name));
             }
-            //pagination second
-            if (pageNumber.HasValue && pageSize.HasValue)
-            {
-                if (pageNumber <= 0 || pageSize <= 0)
-                {
-                    throw new ArgumentException("Page values must be positive ");
-                }
 
-                query = query.Skip((pageNumber.Value - 1) * pageSize.Value)
-                             .Take(pageSize.Value);
-            }
             return await query.ToListAsync();
         }
 
